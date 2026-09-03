@@ -1,0 +1,64 @@
+name: Sync Official Binaries
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # 每天 UTC 03:00 (北京时间 11:00) 定时检查同步
+  workflow_dispatch:     # 支持在 GitHub 网页手动点击一键运行
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Fetch and Prepare Binaries
+        run: |
+          mkdir -p release_assets
+
+          # 1. 获取 cloudflared 官方裸二进制
+          echo "Downloading cloudflared..."
+          curl -sSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" -o release_assets/bot-amd64
+          curl -sSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64" -o release_assets/bot-arm64
+
+          # 2. 获取并解压 Xray-core
+          echo "Downloading and extracting Xray-core..."
+          curl -sSL "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip" -o xray-amd64.zip
+          unzip -q xray-amd64.zip xray
+          mv xray release_assets/web-amd64
+          rm -f xray-amd64.zip
+
+          curl -sSL "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-arm64-v8a.zip" -o xray-arm64.zip
+          unzip -q xray-arm64.zip xray
+          mv xray release_assets/web-arm64
+          rm -f xray-arm64.zip
+
+          # 3. 获取并解压 哪吒 Agent (v1)
+          echo "Downloading and extracting Nezha Agent..."
+          curl -sSL "https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_linux_amd64.zip" -o nezha-amd64.zip
+          unzip -q nezha-amd64.zip nezha-agent
+          mv nezha-agent release_assets/v1-amd64
+          rm -f nezha-amd64.zip
+
+          curl -sSL "https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_linux_arm64.zip" -o nezha-arm64.zip
+          unzip -q nezha-arm64.zip nezha-agent
+          mv nezha-agent release_assets/v1-arm64
+          rm -f nezha-arm64.zip
+
+          # 赋予执行权限并校验生成结果
+          chmod +x release_assets/*
+          ls -lh release_assets/
+
+      - name: Publish Binaries to Release Tag
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest Official Core Binaries"
+          draft: false
+          prerelease: false
+          files: release_assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
