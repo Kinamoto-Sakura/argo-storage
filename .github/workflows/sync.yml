@@ -48,6 +48,23 @@ jobs:
           mv nezha-agent release_assets/v1-arm64
           rm -f nezha-arm64.zip
 
+          # 4. 获取并解压 SagerNet/sing-box (官方源)
+          echo "Downloading and extracting sing-box..."
+          SB_TAG=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          SB_VER="${SB_TAG#v}"
+
+          # amd64 核心
+          curl -sSL "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz" -o sb-amd64.tar.gz
+          tar -xzf sb-amd64.tar.gz --strip-components=1 --wildcards "*/sing-box"
+          mv sing-box release_assets/sb-amd64
+          rm -f sb-amd64.tar.gz
+
+          # arm64 核心
+          curl -sSL "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-arm64.tar.gz" -o sb-arm64.tar.gz
+          tar -xzf sb-arm64.tar.gz --strip-components=1 --wildcards "*/sing-box"
+          mv sing-box release_assets/sb-arm64
+          rm -f sb-arm64.tar.gz
+
           # 赋予执行权限并校验生成结果
           chmod +x release_assets/*
           ls -lh release_assets/
